@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "discord-remote",
+  "description": "The only IPC surface exposed to the Discord web client: window controls, notifications, badge and validated external links.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["https://discord.com/*", "https://*.discord.com/*"]
+  },
+  "permissions": [
+    "allow-rc-window",
+    "allow-rc-notify",
+    "allow-rc-set-badge",
+    "allow-rc-open-external",
+    "allow-rc-rpc-ready",
+    "allow-rc-rpc-detectables"
+  ]
+}
