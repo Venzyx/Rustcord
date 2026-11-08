@@ -221,7 +221,7 @@ fn build_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let script = include_str!("inject/inject.js").replace("__RC_VERSION__", env!("CARGO_PKG_VERSION"));
     let url = APP_URL.parse().expect("valid url");
     WebviewWindowBuilder::new(app, MAIN, WebviewUrl::External(url))
-        .title("Discord")
+        .title("Rustcord")
         .inner_size(1280.0, 760.0)
         .min_inner_size(940.0, 500.0)
         .center()
@@ -300,9 +300,11 @@ fn main() {
             // Toast identity: icon file next to the cache, AUMID in HKCU.
             if let Ok(dir) = handle.path().app_data_dir() {
                 let _ = std::fs::create_dir_all(&dir);
+                // Rewrite when it differs so a logo change reaches existing installs.
+                const TOAST_ICON: &[u8] = include_bytes!("../icons/128x128.png");
                 let icon = dir.join("toast-icon.png");
-                if !icon.exists() {
-                    let _ = std::fs::write(&icon, include_bytes!("../icons/128x128.png"));
+                if std::fs::read(&icon).ok().as_deref() != Some(TOAST_ICON) {
+                    let _ = std::fs::write(&icon, TOAST_ICON);
                 }
                 platform::register_identity(&icon);
             }

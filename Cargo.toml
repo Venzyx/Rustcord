@@ -1,6 +1,6 @@
 [package]
 name = "rustcord"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "Lightweight Rust + WebView2 desktop shell for the official Discord web client (unofficial)"
 license-file = "LICENSE.md"
