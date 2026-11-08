@@ -3,7 +3,7 @@ name = "rustcord"
 version = "0.1.0"
 edition = "2024"
 description = "Lightweight Rust + WebView2 desktop shell for the official Discord web client (unofficial)"
-license = "MIT"
+license-file = "LICENSE.md"
 repository = "https://github.com/Venzyx/Rustcord"
 publish = false
 
@@ -24,7 +24,7 @@ windows-core = "0.62"
 windows-registry = "0.6"
 
 [build-dependencies]
-tauri-build = "2"
+tauri-build = { version = "2", features = [] }
 
 [profile.release]
 opt-level = 3

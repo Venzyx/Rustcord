@@ -101,6 +101,17 @@ Please understand these before using Rustcord:
 5. **Downloads.** Only build from source or download from this repository.
    Never enter your Discord password anywhere other than Discord's own page.
 
+### Install
+
+Download `Rustcord-Setup-x.y.z.exe` from [Releases](https://github.com/Venzyx/Rustcord/releases)
+and run it. Like Discord's installer it asks no questions: it installs for your
+Windows user (no admin rights needed), creates Start menu and desktop shortcuts
+and starts Rustcord. Uninstall from Windows Settings → Apps.
+
+The installer is not code-signed yet, so Windows SmartScreen may show
+"Windows protected your PC". Click **More info → Run anyway** only if you
+downloaded it from this repository's Releases page.
+
 ### Build
 
 Requirements: Windows 10/11, Rust (stable), WebView2 runtime (preinstalled on
@@ -166,6 +177,15 @@ kullanır ve masaüstü özelliklerini Rust ile sağlar.
 Discord'un Electron'dan Rust'a geçiş duyurusundan ilham alınmıştır, ancak Discord'un
 o uygulaması **değildir** ve onunla ilgisi yoktur.
 
+### Kurulum
+
+[Releases](https://github.com/Venzyx/Rustcord/releases) sayfasından
+`Rustcord-Setup-x.y.z.exe` dosyasını indirip çalıştır. Discord'un kurulumu gibi
+soru sormaz: yönetici izni istemeden kendi kullanıcına kurar, kısayolları oluşturur
+ve Rustcord'u açar. Kurulum dosyası henüz dijital olarak imzalı olmadığı için
+Windows SmartScreen uyarı gösterebilir; yalnızca bu deponun Releases sayfasından
+indirdiysen **Ek bilgi → Yine de çalıştır** de.
+
 ### Özellikler
 
 Çerçevesiz pencere, tepsi menüsü, Windows bildirimleri, görev çubuğu rozeti, oyun
@@ -203,4 +223,19 @@ markalarıdır.
 
 ## License
 
-[MIT](LICENSE)
+Rustcord is **source-available, not open source**. It is licensed under the
+[PolyForm Strict License 1.0.0](LICENSE.md):
+
+- ✅ You may download and use Rustcord for personal and other noncommercial purposes.
+- ❌ You may **not** redistribute it (modified or unmodified), publish forks or
+  derived works, or use it commercially, without written permission.
+
+Viewing the code and GitHub's built-in fork button are governed by GitHub's
+Terms of Service; using that code outside of the license terms is not allowed.
+Third-party components bundled in the app keep their own licenses, listed in
+`THIRD_PARTY_LICENSES.txt`.
+
+**Lisans (Türkçe özet):** Rustcord açık kaynak değil, kaynak kodu görülebilir bir
+yazılımdır (PolyForm Strict 1.0.0). Kişisel ve ticari olmayan kullanım serbesttir;
+yazılı izin olmadan yeniden dağıtmak, değiştirilmiş sürümünü yayınlamak veya ticari
+amaçla kullanmak yasaktır.
