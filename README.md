@@ -50,6 +50,7 @@ client. Rustcord is **not** that client and is not related to it.
 | Game detection | "Playing …" from Discord's public list of detectable games |
 | Go Live | Stream Quality menu (resolution + FPS) while streaming, with Discord's own Nitro rules |
 | Links | Non-Discord links open in your default browser |
+| `discord://` links | Optional (tray menu): links from other apps, e.g. notification tools, open the channel in Rustcord instead of the Discord app |
 | Privacy | Microphone/camera are granted to discord.com only |
 | Offline | Built-in reconnect screen instead of a browser error page |
 | Memory | WebView2 memory target is lowered while hidden in the tray |
@@ -176,6 +177,15 @@ kullanır ve masaüstü özelliklerini Rust ile sağlar.
 
 Discord'un Electron'dan Rust'a geçiş duyurusundan ilham alınmıştır, ancak Discord'un
 o uygulaması **değildir** ve onunla ilgisi yoktur.
+
+### discord:// linkleri
+
+Başka bir uygulamadaki (örneğin bildirim araçları) `discord://` linklerine tıklayınca
+Discord uygulaması yerine Rustcord'un açılmasını istersen tepsi menüsünden
+**"discord:// linklerini Rustcord'da aç"** seçeneğini işaretle. Rustcord ilgili kanalı
+sayfayı yeniden yüklemeden açar. Seçeneği kapatınca linkler yine Discord uygulamasına
+gider. Discord uygulaması kendini yeniden kaydederse Rustcord bunu birkaç dakika içinde
+düzeltir.
 
 ### Kurulum
 

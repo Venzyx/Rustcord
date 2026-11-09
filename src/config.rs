@@ -14,11 +14,23 @@ pub struct Config {
     pub start_minimized: bool,
     /// Share game activity / Rich Presence from local apps.
     pub rich_presence: bool,
+    /// Open `discord://` links (e.g. from notification apps) in Rustcord (opt-in).
+    pub handle_discord_links: bool,
+    /// The `discord://` handler that was registered before Rustcord took over.
+    pub previous_discord_handler: Option<String>,
+    pub previous_discord_icon: Option<String>,
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self { minimize_to_tray: true, start_minimized: true, rich_presence: true }
+        Self {
+            minimize_to_tray: true,
+            start_minimized: true,
+            rich_presence: true,
+            handle_discord_links: false,
+            previous_discord_handler: None,
+            previous_discord_icon: None,
+        }
     }
 }
 

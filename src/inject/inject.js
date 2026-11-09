@@ -413,6 +413,23 @@
   if (document.readyState === 'complete') presence.boot();
   else addEventListener('load', () => presence.boot(), { once: true });
 
+  // ---------------------------------------------------------------- deep links
+  // Called from Rust for discord:// links. Routes inside the running app go
+  // through Discord's own router (history + popstate), so nothing reloads.
+  const SPA_ROUTES = /^\/(channels|store|shop|discovery|guild-discovery|quests|activities|library)(\/|$|\?)/;
+  Object.defineProperty(window, '__rcNavigate', {
+    value: (path) => {
+      if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) return;
+      const inApp = SPA_ROUTES.test(location.pathname) || location.pathname === '/app';
+      if (inApp && SPA_ROUTES.test(path)) {
+        history.pushState(history.state, '', path);
+        dispatchEvent(new PopStateEvent('popstate', { state: history.state }));
+      } else {
+        location.assign(path);
+      }
+    },
+  });
+
   // ---------------------------------------------------------------- shortcuts
   addEventListener('keydown', (e) => {
     const ctrl = e.ctrlKey && !e.altKey && !e.metaKey;

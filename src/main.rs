@@ -6,6 +6,7 @@
 
 mod badge;
 mod config;
+mod links;
 mod notify;
 mod platform;
 mod rpc;
@@ -45,6 +46,7 @@ struct Strings {
     autostart: &'static str,
     to_tray: &'static str,
     presence: &'static str,
+    links: &'static str,
     reload: &'static str,
     quit: &'static str,
 }
@@ -56,6 +58,7 @@ fn strings() -> Strings {
             autostart: "Windows ile başlat",
             to_tray: "Kapatınca tepsiye küçült",
             presence: "Oyun etkinliğini paylaş",
+            links: "discord:// linklerini Rustcord'da aç",
             reload: "Yeniden yükle",
             quit: "Rustcord'dan Çık",
         }
@@ -65,6 +68,7 @@ fn strings() -> Strings {
             autostart: "Start with Windows",
             to_tray: "Minimize to tray on close",
             presence: "Share game activity",
+            links: "Open discord:// links in Rustcord",
             reload: "Reload",
             quit: "Quit Rustcord",
         }
@@ -164,16 +168,18 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon> {
     let autostart_on = app.autolaunch().is_enabled().unwrap_or(false);
     let to_tray_on = app.state::<ConfigState>().get().minimize_to_tray;
     let presence_on = app.state::<ConfigState>().get().rich_presence;
+    let links_on = app.state::<ConfigState>().get().handle_discord_links && links::is_registered();
 
     let open = MenuItem::with_id(app, "open", s.open, true, None::<&str>)?;
     let autostart = CheckMenuItem::with_id(app, "autostart", s.autostart, true, autostart_on, None::<&str>)?;
     let to_tray = CheckMenuItem::with_id(app, "to_tray", s.to_tray, true, to_tray_on, None::<&str>)?;
     let presence = CheckMenuItem::with_id(app, "presence", s.presence, true, presence_on, None::<&str>)?;
+    let links_item = CheckMenuItem::with_id(app, "links", s.links, true, links_on, None::<&str>)?;
     let reload = MenuItem::with_id(app, "reload", s.reload, true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", s.quit, true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    let menu = Menu::with_items(app, &[&open, &sep1, &autostart, &to_tray, &presence, &reload, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &sep1, &autostart, &to_tray, &presence, &links_item, &reload, &sep2, &quit])?;
 
     let base = app.state::<Runtime_>().tray_base.clone();
     TrayIconBuilder::with_id("rustcord")
@@ -201,6 +207,16 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon> {
                 let _ = presence.set_checked(on);
                 rpc::set_enabled(app, on);
             }
+            "links" => {
+                let state = app.state::<ConfigState>();
+                let enable = !state.get().handle_discord_links;
+                state.update(|c| c.handle_discord_links = enable);
+                let result = if enable { links::register(app) } else { links::unregister(app) };
+                if let Err(e) = result {
+                    eprintln!("rustcord: discord:// registration failed: {e}");
+                }
+                let _ = links_item.set_checked(state.get().handle_discord_links && links::is_registered());
+            }
             "reload" => {
                 if let Some(w) = app.get_webview_window(MAIN) {
                     let _ = w.eval("location.reload()");
@@ -217,9 +233,12 @@ fn build_tray(app: &AppHandle) -> tauri::Result<TrayIcon> {
         .build(app)
 }
 
-fn build_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
+fn build_window(app: &AppHandle, start_path: Option<&str>) -> tauri::Result<WebviewWindow> {
     let script = include_str!("inject/inject.js").replace("__RC_VERSION__", env!("CARGO_PKG_VERSION"));
-    let url = APP_URL.parse().expect("valid url");
+    // Started from a discord:// link: open that page directly.
+    let url = start_path
+        .and_then(|p| format!("https://discord.com{p}").parse().ok())
+        .unwrap_or_else(|| APP_URL.parse().expect("valid url"));
     WebviewWindowBuilder::new(app, MAIN, WebviewUrl::External(url))
         .title("Rustcord")
         .inner_size(1280.0, 760.0)
@@ -259,13 +278,19 @@ fn build_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
 }
 
 fn main() {
-    let start_hidden_flag = std::env::args().any(|a| a == "--minimized");
+    let args: Vec<String> = std::env::args().collect();
+    let start_link = links::find_in_args(&args);
+    // A link launch must always show the window, even from autostart.
+    let start_hidden_flag = start_link.is_none() && args.iter().any(|a| a == "--minimized");
     let tray_base = Image::from_bytes(TRAY_ICON).expect("embedded tray icon").to_owned();
     let tray_dot = badge::tray_with_dot(&tray_base);
 
     tauri::Builder::default()
         // Must be first: a second launch focuses the running instance.
-        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| match links::find_in_args(&args) {
+            Some(path) => links::open(app, &path),
+            None => show_main(app),
+        }))
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--minimized"])))
         .plugin(
             tauri_plugin_window_state::Builder::default()
@@ -310,11 +335,17 @@ fn main() {
             }
             notify::prune_cache(&handle);
 
-            let window = build_window(&handle)?;
+            let window = build_window(&handle, start_link.as_deref())?;
             webview2::configure(&window);
             let tray = build_tray(&handle)?;
             *app.state::<Runtime_>().tray.lock().unwrap_or_else(|e| e.into_inner()) = Some(tray);
             rpc::start(&handle);
+
+            // discord:// links: keep the registration if the user opted in.
+            if handle.state::<ConfigState>().get().handle_discord_links {
+                let _ = links::register(&handle);
+            }
+            links::start_guard(handle.clone());
 
             // Safety net: show the window even if the first load never finishes.
             if !start_hidden {
