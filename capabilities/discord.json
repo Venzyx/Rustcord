@@ -12,6 +12,7 @@
     "allow-rc-set-badge",
     "allow-rc-open-external",
     "allow-rc-rpc-ready",
-    "allow-rc-rpc-detectables"
+    "allow-rc-rpc-detectables",
+    "allow-rc-keybinds-set"
   ]
 }

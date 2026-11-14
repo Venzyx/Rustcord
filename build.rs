@@ -7,6 +7,7 @@ fn main() {
             "rc_open_external",
             "rc_rpc_ready",
             "rc_rpc_detectables",
+            "rc_keybinds_set",
         ])),
     )
     .expect("failed to run tauri-build");

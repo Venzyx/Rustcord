@@ -48,6 +48,7 @@ client. Rustcord is **not** that client and is not related to it.
 | Badges | Mention count on the taskbar icon, red dot on the tray icon |
 | Rich Presence | Local `discord-ipc` server for games and apps that use Rich Presence |
 | Game detection | "Playing …" from Discord's public list of detectable games |
+| Keybinds | Settings → Keybinds works (toggle deafen/mute, push-to-talk, …) and the shortcuts also work while a game has focus |
 | Go Live | Stream Quality menu (resolution + FPS) while streaming, with Discord's own Nitro rules |
 | Links | Non-Discord links open in your default browser |
 | `discord://` links | Optional (tray menu): links from other apps, e.g. notification tools, open the channel in Rustcord instead of the Discord app |
@@ -74,7 +75,7 @@ benchmark. `scripts/measure-memory.ps1` reproduces the measurement.
 These depend on Discord's closed-source native modules:
 
 - In-game overlay
-- Global push-to-talk and keybinds while another app is focused
+- Keybinds that use mouse buttons or gamepads (keyboard keys and combinations work, also in other apps)
 - Krisp noise suppression (Discord's standard noise suppression works)
 - Discord's own screen picker (the Windows picker is used)
 - RPC commands that need OAuth (`AUTHORIZE`, `AUTHENTICATE`) and the RPC WebSocket transport
@@ -99,7 +100,12 @@ Please understand these before using Rustcord:
    your account. You can turn game activity off from the tray menu.
 4. **No warranty.** This is an independent hobby project with no security audit.
    It can contain bugs, including ones that affect your account, data or computer.
-5. **Downloads.** Only build from source or download from this repository.
+5. **Global keybinds watch the keyboard.** To make keybinds work while another
+   app has focus, Rustcord installs a Windows keyboard hook **only while you have
+   at least one custom keybind**. It compares key codes with your keybinds in memory;
+   it never stores, logs or sends keystrokes and never blocks a key. Some anti-cheat
+   software dislikes keyboard hooks, so remove your keybinds if a game objects.
+6. **Downloads.** Only build from source or download from this repository.
    Never enter your Discord password anywhere other than Discord's own page.
 
 ### Install
@@ -216,7 +222,12 @@ etkinliği (Rich Presence ve oyun algılama), yayın sırasında çözünürlük
    etkinliğini değiştirebilir ve herkese açık kullanıcı bilgilerini (id, kullanıcı
    adı, avatar) görebilir. Mesajlarını okuyamaz. Tepsi menüsünden kapatılabilir.
 4. **Garanti yoktur:** Güvenlik denetiminden geçmemiş bağımsız bir hobi projesidir.
-5. **İndirme:** Yalnızca kaynaktan derle ya da bu depodan indir. Discord şifreni
+5. **Genel kısayollar klavyeyi izler:** Başka bir uygulama (örneğin oyun) öndeyken
+   kısayolların çalışması için, yalnızca en az bir özel kısayolun varsa Windows klavye
+   kancası kurulur. Basılan tuşları sadece bellekte kısayollarınla karşılaştırır;
+   kaydetmez, günlüğe yazmaz, göndermez, hiçbir tuşu engellemez. Bazı hile korumaları
+   klavye kancalarını sevmeyebilir; oyun itiraz ederse kısayollarını sil.
+6. **İndirme:** Yalnızca kaynaktan derle ya da bu depodan indir. Discord şifreni
    Discord'un kendi sayfası dışında hiçbir yere girme.
 
 ### Sorumluluk reddi

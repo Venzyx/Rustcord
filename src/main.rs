@@ -6,6 +6,7 @@
 
 mod badge;
 mod config;
+mod keys;
 mod links;
 mod notify;
 mod platform;
@@ -157,6 +158,11 @@ fn rc_rpc_ready(app: AppHandle, user: Option<rpc::RpcUser>) {
 }
 
 #[tauri::command]
+fn rc_keybinds_set(app: AppHandle, keybinds: Vec<keys::Keybind>) {
+    keys::set(&app, keybinds);
+}
+
+#[tauri::command]
 fn rc_rpc_detectables(app: AppHandle, list: Vec<rpc::detect::Detectable>) -> usize {
     app.state::<rpc::detect::Detector>().load(list)
 }
@@ -305,7 +311,8 @@ fn main() {
             rc_set_badge,
             rc_open_external,
             rc_rpc_ready,
-            rc_rpc_detectables
+            rc_rpc_detectables,
+            rc_keybinds_set
         ])
         .setup(move |app| {
             let handle = app.handle().clone();

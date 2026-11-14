@@ -27,9 +27,27 @@
       match: /\b[\w$]+\.isPlatformEmbedded\?(\(0,[\w$]+\.jsx\)\([\w$]+\.Dr,\{id:"stream-settings")/,
       replace: 'true?$1',
     },
+    {
+      // Settings → Keybinds: the panel is replaced by "download the desktop
+      // app" in the browser. Show the real panel (recorder, action list).
+      name: 'keybinds-panel',
+      find: 'CUSTOM_KEYBINDS_SETTING',
+      match: /\breturn [\w$]+\.[\w$]+\?(\(0,[\w$]+\.jsx\)\([\w$]+,\{\}\):\(0,[\w$]+\.jsx\)\([\w$.]+,\{type:"info",message:[\w$.]+\.intl\.format\([\w$.]+,\{downloadLink)/,
+      replace: 'return true?$1',
+    },
+    {
+      // …and its "Add a Keybind" button.
+      name: 'keybinds-add-button',
+      find: 'id:"add-keybind"',
+      match: /(useHeaderDecoration:\(\)=>)[\w$]+\.[\w$]+(\?\{type:[\w$.]+,buttons:\[\{id:"add-keybind")/,
+      replace: '$1true$2',
+    },
   ];
   const patchStatus = Object.fromEntries(PATCHES.map((p) => [p.name, 'pending']));
-  Object.defineProperty(window, '__rustcordPatches', { get: () => ({ ...patchStatus }) });
+  Object.defineProperty(window, '__rustcordPatches', {
+    get: () => Object.fromEntries(PATCHES.map((p) => [p.name,
+      patchStatus[p.name] === 'pending' && p.misses ? `pending (${p.misses} non-matching candidates)` : patchStatus[p.name]])),
+  });
 
   function patchFactory(id, factory) {
     if (typeof factory !== 'function') return factory;
@@ -42,8 +60,9 @@
       if (!src.includes(p.find)) continue;
       const next = out.replace(p.match, p.replace);
       if (next === out) {
-        patchStatus[p.name] = 'no-match';
-        console.warn('[rustcord] patch did not match:', p.name);
+        // The marker may also appear in unrelated modules: keep looking and
+        // only count the miss (reported through __rustcordPatches).
+        p.misses = (p.misses || 0) + 1;
       } else {
         out = next;
         patchStatus[p.name] = 'applied';
@@ -99,6 +118,115 @@
   } catch (e) {
     console.error('[rustcord] could not install module hook', e);
   }
+
+  // ---------------------------------------------------------------- global keybinds
+  // Keybinds the user creates in Settings → Keybinds work while Rustcord is
+  // focused (Discord's web client handles them itself). To make them work in
+  // other apps too, the keybinds' key codes are reported to Rust, which watches
+  // for exactly those combinations; presses/releases come back through
+  // __rcKeybind and are replayed as key events, so Discord's own keybind
+  // system performs the action (toggle deafen, push-to-talk, …).
+  const globalKeybinds = (() => {
+    const MODIFIERS = new Set([16, 17, 18, 91, 224]);
+    let store = null;
+    let current = new Map(); // keybind id -> JS key codes
+    let lastSent = '';
+
+    const isReal = (v) => {
+      try { return v != null && v['__rc_probe_' + Math.random().toString(36).slice(2)] === undefined; } catch { return false; }
+    };
+
+    function findStore() {
+      const chunk = window.webpackChunkdiscord_app;
+      if (!chunk || typeof chunk.push !== 'function') return null;
+      const runtimes = [];
+      try {
+        chunk.push([[Symbol('rustcord-keybinds')], {}, (r) => { runtimes.push(r); }]);
+        chunk.pop();
+      } catch { return null; }
+      for (const req of runtimes) {
+        const cache = req.c;
+        if (!cache) continue;
+        for (const id in cache) {
+          const ex = cache[id] && cache[id].exports;
+          if (!ex || (typeof ex !== 'object' && typeof ex !== 'function') || !isReal(ex)) continue;
+          let values;
+          try { values = Object.values(ex); } catch { continue; }
+          for (const v of values) {
+            try {
+              if (v && isReal(v) && typeof v.getUserAgnosticState === 'function' && typeof v.hasExactKeybind === 'function'
+                  && typeof v.addChangeListener === 'function') return v;
+            } catch { /* hostile getter */ }
+          }
+        }
+      }
+      return null;
+    }
+
+    function compute() {
+      const list = [];
+      const map = new Map();
+      let state = {};
+      try { state = store.getUserAgnosticState() || {}; } catch { /* not ready */ }
+      for (const kb of Object.values(state)) {
+        // Only keybinds the user made; Discord's built-in defaults stay in-window.
+        if (!kb || kb.managed || !kb.enabled || kb.action === 'UNASSIGNED') continue;
+        const sc = kb.shortcut;
+        if (!Array.isArray(sc) || !sc.length) continue;
+        // Keyboard keys only (type 0); mouse buttons and gamepads are not supported.
+        if (!sc.every((k) => Array.isArray(k) && k[0] === 0 && Number.isInteger(k[1]))) continue;
+        const keys = [...new Set(sc.map((k) => k[1]))];
+        list.push({ id: String(kb.id), keys });
+        map.set(String(kb.id), keys);
+      }
+      return { list, map };
+    }
+
+    function push() {
+      if (!store) return;
+      const { list, map } = compute();
+      current = map;
+      const json = JSON.stringify(list);
+      if (json === lastSent) return;
+      lastSent = json;
+      invoke('rc_keybinds_set', { keybinds: list }).catch(() => { lastSent = ''; });
+    }
+
+    Object.defineProperty(window, '__rcKeybind', {
+      value: (id, down) => {
+        const keys = current.get(String(id));
+        if (!keys) return;
+        const main = [...keys].reverse().find((k) => !MODIFIERS.has(k)) ?? keys[keys.length - 1];
+        const ev = new KeyboardEvent(down ? 'keydown' : 'keyup', {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: keys.includes(17),
+          shiftKey: keys.includes(16),
+          altKey: keys.includes(18),
+          metaKey: keys.includes(91) || keys.includes(224),
+        });
+        Object.defineProperty(ev, 'which', { value: main });
+        Object.defineProperty(ev, 'keyCode', { value: main });
+        document.dispatchEvent(ev);
+      },
+    });
+
+    let tries = 0;
+    function boot() {
+      if (!store) {
+        store = findStore();
+        if (store) {
+          try { store.addChangeListener(push); } catch { /* keep polling via push on boot */ }
+          push();
+        }
+      }
+      tries++;
+      if (!store) setTimeout(boot, tries < 120 ? 1500 : 15000);
+    }
+    return { boot };
+  })();
+  if (document.readyState === 'complete') globalKeybinds.boot();
+  else addEventListener('load', () => globalKeybinds.boot(), { once: true });
 
   // ---------------------------------------------------------------- stream frame rate
   // The web media engine always captures the screen at 30 fps. Capture at the
